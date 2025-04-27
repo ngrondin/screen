@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
-use datetime::{DatePiece, LocalDateTime, TimePiece};
+use chrono::{Datelike, Local, Timelike};
 use serde_json::Value;
 
-use crate::{data::DataStore, fonts::{Font, FontFactory}, framebuffer::Color, layout::{containerbox::{ContainerAlign, ContainerBox, ContainerDir}, textbox::TextBox}, utils::{get_month_name, get_weekday_name}};
+use crate::{data::DataStore, fonts::{Font, FontFactory}, framebuffer::Color, layout::{containerbox::{ContainerAlign, ContainerBox, ContainerDir, ContainerJustify}, textbox::TextBox}, utils::{get_month_name, get_weekday_name}};
 
 use super::Component;
 
@@ -32,10 +32,10 @@ impl DateTimeUnit {
 
 impl Component for DateTimeUnit {
     fn produce(&self, _data_store: &DataStore) -> Box<dyn crate::layout::LayoutItem> {
-        let now = LocalDateTime::now();
-        let time_str = format!("{}:{}", now.time().hour(), now.time().minute());
-        let date_str = format!("{}, {} {}", get_weekday_name(now.date().weekday()), now.date().day(), get_month_name(now.date().month()));
-        let mut top = ContainerBox::new(ContainerDir::Column, ContainerAlign::Center, 0, 0, None);
+        let now = Local::now();
+        let time_str = format!("{}:{:0>2}", now.hour(), now.minute());
+        let date_str = format!("{}, {} {}", get_weekday_name(now.weekday()), now.day(), get_month_name(now.month()));
+        let mut top = ContainerBox::new(ContainerDir::Column, ContainerAlign::Center, ContainerJustify::Start, 0, 0, None);
         top.add_content(Box::new(TextBox::new(&time_str, &self.time_font, &self.color)));
         if self.show_date {
             top.add_content(Box::new(TextBox::new(&date_str, &self.date_font, &self.color)));

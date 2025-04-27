@@ -1,4 +1,6 @@
 
+use serde_json::Value;
+
 use crate::{data::DataStore, layout::LayoutItem, painter::Painter};
 pub mod factory;
 pub mod container;
@@ -15,12 +17,14 @@ pub trait Component {
 
 
 pub struct Page {
-    top_component: Box<dyn Component>
+    top_component: Box<dyn Component>,
+    pub seconds: u32
 }
 
 impl Page {
-    pub fn new(comp: Box<dyn Component>) -> Self {
-        Page{ top_component: comp }
+    pub fn new(value: &Value, comp: Box<dyn Component>) -> Self {
+        let secs = value["seconds"].as_u64().unwrap_or(5);
+        Page{ top_component: comp, seconds: secs as u32 }
     }
 
     pub fn produce(&self, data_store: &DataStore) -> Painter {

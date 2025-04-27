@@ -3,7 +3,7 @@ use std::rc::Rc;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::{data::DataStore, fonts::{Font, FontFactory}, framebuffer::Color, layout::{containerbox::{ContainerAlign, ContainerBox, ContainerDir}, imagebox::ImageBox, textbox::TextBox}, utils::get_image};
+use crate::{data::DataStore, fonts::{Font, FontFactory}, framebuffer::Color, layout::{containerbox::{ContainerAlign, ContainerBox, ContainerDir, ContainerJustify}, imagebox::ImageBox, textbox::TextBox}, utils::get_image};
 
 use super::Component;
 
@@ -58,11 +58,11 @@ impl NewsUnit {
 
 impl Component for NewsUnit {
     fn produce(&self, data_store: &DataStore) -> Box<dyn crate::layout::LayoutItem> {
-        let mut top = ContainerBox::new(ContainerDir::Column, ContainerAlign::Start, 1, 0, None);
+        let mut top = ContainerBox::new(ContainerDir::Column, ContainerAlign::Start, ContainerJustify::Start, 1, 0, None);
         let data: RssData = data_store.load(&self.data_name);
         let mut count = 0;
         for channel in data.channel {
-            let mut title_box = ContainerBox::new(ContainerDir::Row, ContainerAlign::Start, 0, 20, None);
+            let mut title_box = ContainerBox::new(ContainerDir::Row, ContainerAlign::Start, ContainerJustify::Start, 0, 20, None);
             let title_image_option = get_image(&channel.image.url);
             if let Some(title_image) = title_image_option {
                 let title_image_box = ImageBox::new(Rc::new(title_image));
@@ -73,13 +73,13 @@ impl Component for NewsUnit {
             }
             top.add_content(Box::new(title_box));
             for item in channel.item {
-                let mut item_box = ContainerBox::new(ContainerDir::Row, ContainerAlign::Start, 0, 20, None);
+                let mut item_box = ContainerBox::new(ContainerDir::Row, ContainerAlign::Start, ContainerJustify::Start, 0, 20, None);
                 let image_option = get_image(&item.image.url);
                 if let Some(image) = image_option {
                     let image_box = ImageBox::new(Rc::new(image));
                     item_box.add_content(Box::new(image_box));
                 }
-                let mut title_desc_box = ContainerBox::new(ContainerDir::Column, ContainerAlign::Start, 0, 20, None);
+                let mut title_desc_box = ContainerBox::new(ContainerDir::Column, ContainerAlign::Start, ContainerJustify::Start, 0, 20, None);
                 title_desc_box.add_content(Box::new(TextBox::new(&item.title, &self.title_font, &self.title_color)));
                 title_desc_box.add_content(Box::new(TextBox::new(&item.description, &self.desc_font, &self.desc_color)));
                 item_box.add_content(Box::new(title_desc_box));

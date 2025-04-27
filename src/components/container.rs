@@ -1,20 +1,21 @@
 use serde_json::Value;
 
-use crate::{data::DataStore, framebuffer::Color, layout::{containerbox::{ContainerAlign, ContainerBox, ContainerDir}, LayoutItem}};
+use crate::{data::DataStore, framebuffer::Color, layout::{containerbox::{ContainerAlign, ContainerBox, ContainerDir, ContainerJustify}, LayoutItem}};
 
 use super::Component;
 
 
-pub struct Container {
+pub struct ContainerUnit {
     dir: ContainerDir,
     align: ContainerAlign,
+    justify: ContainerJustify,
     grow: u8,
     pad: u32,
     color: Option<Color>,
     children: Vec<Box<dyn Component>>
 }
 
-impl Container {
+impl ContainerUnit {
     pub fn new(value: &Value) -> Self {
         let dir = match value["dir"].as_str() {
             Some(dir_str) => { if dir_str == "row" { ContainerDir::Row } else { ContainerDir::Column } },
@@ -31,6 +32,17 @@ impl Container {
             },
             None => ContainerAlign::Start
         };
+        let justify = match value["justify"].as_str() {
+            Some(align_str) => { 
+                match align_str {
+                    "start" => ContainerJustify::Start,
+                    "center" => ContainerJustify::Center,
+                    "end" => ContainerJustify::End,
+                    _ => ContainerJustify::Start
+                }
+            },
+            None => ContainerJustify::Start
+        };        
         let grow = match value["grow"].as_u64() {
             Some(grow_num) => grow_num as u8,
             None => 0
@@ -43,7 +55,7 @@ impl Container {
             Some(color_str) => Some(Color::from_string(color_str)),
             None => None
         };
-        Container{ dir, align, grow, pad, color, children: vec![] }
+        ContainerUnit{ dir, align, justify, grow, pad, color, children: vec![] }
     }
 
     pub fn add_child(&mut self, child: Box<dyn Component>) {
@@ -51,9 +63,9 @@ impl Container {
     }
 }
 
-impl Component for Container {
+impl Component for ContainerUnit {
     fn produce(&self, data_store: &DataStore) -> Box<dyn LayoutItem> {
-        let mut container_box = ContainerBox::new(self.dir.clone(), self.align.clone(), self.grow, self.pad, self.color.clone());
+        let mut container_box = ContainerBox::new(self.dir.clone(), self.align.clone(), self.justify.clone(), self.grow, self.pad, self.color.clone());
         for child in self.children.iter() {
             let childbox = child.produce(data_store);
             container_box.add_content(childbox);

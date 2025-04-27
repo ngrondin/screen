@@ -40,7 +40,7 @@ impl Runner {
                 frame_buffer.clear();
                 page.produce(&self.data_store).paint_on(frame_buffer);
                 frame_buffer.send();
-                sleep(Duration::from_secs(5));
+                sleep(Duration::from_secs(page.seconds as u64));
             }
         }
 

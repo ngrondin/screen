@@ -17,6 +17,13 @@ pub enum ContainerAlign {
     End
 }
 
+#[derive(Debug, Clone)]
+pub enum ContainerJustify {
+    Start,
+    Center,
+    End
+}
+
 pub struct ContainerFixedSize {
     pub width: u32,
     pub height: u32
@@ -27,30 +34,33 @@ pub struct ContainerBox {
     fixed_size: Option<ContainerFixedSize>,
     dir: ContainerDir,
     align: ContainerAlign,
+    justify: ContainerJustify,
     pad: u32,
     color: Option<Color>,
     content: Vec<Box<dyn LayoutItem>>
 }
 
 impl ContainerBox {
-    pub fn new(dir: ContainerDir, align: ContainerAlign, grow: u8, pad:u32, color: Option<Color>) -> Self {
+    pub fn new(dir: ContainerDir, align: ContainerAlign, justify: ContainerJustify, grow: u8, pad:u32, color: Option<Color>) -> Self {
         ContainerBox { 
             layout: Layout::grow_all(grow),
             fixed_size: None,
             dir, 
             align,
+            justify,
             pad,
             color, 
             content: vec![] 
         }
     }
 
-    pub fn new_fixed_size(dir: ContainerDir, align: ContainerAlign, size: ContainerFixedSize, pad:u32, color: Option<Color>) -> Self {
+    pub fn new_fixed_size(dir: ContainerDir, align: ContainerAlign, justify: ContainerJustify, size: ContainerFixedSize, pad:u32, color: Option<Color>) -> Self {
         ContainerBox { 
             layout: Layout::default(),
             fixed_size: Some(size),
             dir, 
             align,
+            justify,
             pad,
             color, 
             content: vec![] 
@@ -139,34 +149,52 @@ impl LayoutItem for ContainerBox {
     fn run_layout_position(&mut self, offsetx: u32, offsety: u32) {
         self.layout.x = Some(offsetx);
         self.layout.y = Some(offsety);
+        let w = self.layout.width.unwrap();
+        let h = self.layout.height.unwrap();
+        let iw = w - (2*self.pad);
+        let ih = h - (2*self.pad);
+        let mut content_w = 0;
+        let mut content_h = 0;
+        for child in self.content.iter() {
+            content_w += child.get_layout().width.unwrap_or(0);
+            content_h += child.get_layout().height.unwrap_or(0);
+        }
+        let spare_w = if content_w < iw {iw - content_w} else {0};
+        let spare_h = if content_h < ih {ih - content_h} else {0};
         let mut ox = offsetx + self.pad;
         let mut oy = offsety + self.pad;
+        match self.dir {
+            ContainerDir::Row => {
+                ox = match self.justify {
+                    ContainerJustify::Start => {offsetx + self.pad},
+                    ContainerJustify::Center => {offsetx + self.pad + (spare_w / 2)},
+                    ContainerJustify::End => {offsetx + self.pad + spare_w},
+                }
+            },
+            ContainerDir::Column => {
+                oy = match self.justify {
+                    ContainerJustify::Start => {offsety + self.pad},
+                    ContainerJustify::Center => {offsety + self.pad + (spare_h / 2)},
+                    ContainerJustify::End => {offsety + self.pad},
+                }
+            }
+        }
         for child in self.content.iter_mut() {
+            let cw = child.get_layout().width.unwrap();
+            let ch = child.get_layout().height.unwrap();
             match self.dir {
                 ContainerDir::Row => {
-                    match self.align {
-                        ContainerAlign::Start => {
-                            oy = offsety + self.pad;
-                        },
-                        ContainerAlign::Center => {
-                            oy = offsety + ((self.layout.height.unwrap() - (2*self.pad) - child.get_layout().height.unwrap()) / 2) + self.pad;
-                        },
-                        ContainerAlign::End => {
-                            oy = offsety + self.layout.height.unwrap() - child.get_layout().height.unwrap() - self.pad;
-                        }
+                    oy = match self.align {
+                        ContainerAlign::Start => offsety + self.pad,
+                        ContainerAlign::Center => offsety + ((ih - ch) / 2) + self.pad,
+                        ContainerAlign::End => offsety + h - ch - self.pad,         
                     }
                 },
                 ContainerDir::Column => {
-                    match self.align {
-                        ContainerAlign::Start => {
-                            ox = offsetx + self.pad;
-                        },
-                        ContainerAlign::Center => {
-                            ox = offsetx + ((self.layout.width.unwrap() - (2*self.pad) - child.get_layout().width.unwrap()) / 2) + self.pad;
-                        },
-                        ContainerAlign::End => {
-                            ox = offsetx + self.layout.width.unwrap() - child.get_layout().width.unwrap() - self.pad;
-                        }
+                    ox = match self.align {
+                        ContainerAlign::Start => offsetx + self.pad,
+                        ContainerAlign::Center => offsetx + ((iw - cw) / 2) + self.pad,
+                        ContainerAlign::End => offsetx + w - cw - self.pad
                     }
                 }
             }

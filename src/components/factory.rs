@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use serde_json::Value;
 
-use crate::{components::{container::Container, image::ImageUnit, text::TextUnit, Component}, fonts::FontFactory, utils::{list_folder_configs, load_config}};
+use crate::{components::{container::ContainerUnit, image::ImageUnit, text::TextUnit, Component}, fonts::FontFactory, utils::{list_folder_configs, load_config}};
 
 use super::{datetime::DateTimeUnit, news::NewsUnit, openweather::WeatherUnit, openweatherforecast::WeatherForecastUnit, Page};
 
@@ -24,20 +24,21 @@ impl PageFactory {
 
     pub fn load_page(&self, name: &str) -> Page {
         let config = load_config(&self.folder, name);
-        let top_component = self.recursive_comp_create(config);
-        let page = Page::new(top_component);
+        let comp_config = &config["component"];
+        let top_component = self.recursive_comp_create(comp_config);
+        let page = Page::new(&config, top_component);
         page
     }
 
-    fn recursive_comp_create(&self, value: Value) -> Box<dyn Component> {
+    fn recursive_comp_create(&self, value: &Value) -> Box<dyn Component> {
         match value["type"].as_str() {
             Some(t) => {
                 match t {
                     "container" => {
-                        let mut container = Container::new(&value);
+                        let mut container = ContainerUnit::new(&value);
                         if let Some(content_array) = value["content"].as_array() {
                             for array_item in content_array.iter() {
-                                let child = self.recursive_comp_create(array_item.clone());
+                                let child = self.recursive_comp_create(&array_item.clone());
                                 container.add_child(child);
                             }
                         }
@@ -49,10 +50,10 @@ impl PageFactory {
                     "weather" => Box::new(WeatherUnit::new(&value, self.font_factory.clone())),
                     "weatherforecast" => Box::new(WeatherForecastUnit::new(&value, self.font_factory.clone())),
                     "datetime" => Box::new(DateTimeUnit::new(&value, self.font_factory.clone())),
-                    _ => Box::new(Container::new(&value))
+                    _ => Box::new(ContainerUnit::new(&value))
                 }
             }
-            None => Box::new(Container::new(&value))
+            None => Box::new(ContainerUnit::new(&value))
         }
     }
  }

@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
-use datetime::{DatePiece, LocalDateTime};
+use chrono::{Datelike, Local, TimeZone, Utc};
 use serde_json::Value;
 
-use crate::{data::DataStore, fonts::{Font, FontFactory}, framebuffer::Color, layout::{containerbox::{ContainerAlign, ContainerBox, ContainerDir, ContainerFixedSize}, imagebox::ImageBox, textbox::TextBox}, models::weather::WeatherForecastData, utils::{get_image, get_month_name}};
+use crate::{data::DataStore, fonts::{Font, FontFactory}, framebuffer::Color, layout::{containerbox::{ContainerAlign, ContainerBox, ContainerDir, ContainerFixedSize, ContainerJustify}, imagebox::ImageBox, textbox::TextBox}, models::weather::WeatherForecastData, utils::{get_image, get_month_name}};
 
 use super::{openweather::get_wind_dir, Component};
 
@@ -35,15 +35,15 @@ impl WeatherForecastUnit {
 
 impl Component for WeatherForecastUnit {
     fn produce(&self, data_store: &DataStore) -> Box<dyn crate::layout::LayoutItem> {
-        let mut top = ContainerBox::new(ContainerDir::Column, ContainerAlign::Start, 0, 0, None);
+        let mut top = ContainerBox::new(ContainerDir::Column, ContainerAlign::Start, ContainerJustify::Start, 0, 0, None);
         let data: WeatherForecastData = data_store.load(&self.data_name);
 
         for item in data.list {
-            let mut line_box = ContainerBox::new(ContainerDir::Row, ContainerAlign::Center, 0, 5, None);
+            let mut line_box = ContainerBox::new(ContainerDir::Row, ContainerAlign::Center, ContainerJustify::Start, 0, 5, None);
 
-            let mut date_box = ContainerBox::new_fixed_size(ContainerDir::Row, ContainerAlign::Center, ContainerFixedSize{width: 230, height:40}, 0, None);
-            let date_time = LocalDateTime::at(item.ts);
-            let date_str = format!("{} {}", date_time.date().day(), get_month_name(date_time.date().month()));
+            let mut date_box = ContainerBox::new_fixed_size(ContainerDir::Row, ContainerAlign::Center, ContainerJustify::Start, ContainerFixedSize{width: 230, height:40}, 0, None);
+            let date_time = Utc.timestamp_opt(item.ts, 0).unwrap().with_timezone(&Local);
+            let date_str = format!("{} {}", date_time.day(), get_month_name(date_time.month()));
             date_box.add_content(Box::new(TextBox::new(&date_str, &self.date_font, &self.color)));
             line_box.add_content(Box::new(date_box));
 
@@ -51,7 +51,7 @@ impl Component for WeatherForecastUnit {
                 line_box.add_content(Box::new(ImageBox::new(Rc::new(icon))));
             }
 
-            let mut line_text_col = ContainerBox::new(ContainerDir::Column, ContainerAlign::Start, 0, 0, None);
+            let mut line_text_col = ContainerBox::new(ContainerDir::Column, ContainerAlign::Start, ContainerJustify::Start, 0, 0, None);
             line_text_col.add_content(Box::new(TextBox::new(&item.title, &self.title_font, &self.color)));
             let sub_text = format!("{}°C, {} {}km/h", (item.temp - 273.0) as u32, get_wind_dir(item.wind_dir), item.wind_speed as u32);
             line_text_col.add_content(Box::new(TextBox::new(&sub_text, &self.text_font, &self.color)));
