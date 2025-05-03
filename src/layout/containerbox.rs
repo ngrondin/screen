@@ -1,6 +1,8 @@
-use std::cmp::max;
+use std::{cmp::max, rc::Rc};
 
-use crate::{framebuffer::Color, painter::{fill::Fill, PaintAction}};
+use image::DynamicImage;
+
+use crate::{framebuffer::Color, painter::{fill::Fill, image::PaintImage, PaintAction}};
 
 use super::{Layout, LayoutItem};
 
@@ -37,6 +39,7 @@ pub struct ContainerBox {
     justify: ContainerJustify,
     pad: u32,
     color: Option<Color>,
+    background_image: Option<Rc<DynamicImage>>,
     content: Vec<Box<dyn LayoutItem>>
 }
 
@@ -50,6 +53,7 @@ impl ContainerBox {
             justify,
             pad,
             color, 
+            background_image: None,
             content: vec![] 
         }
     }
@@ -63,13 +67,21 @@ impl ContainerBox {
             justify,
             pad,
             color, 
+            background_image: None,
             content: vec![] 
         }
+    }
+
+    pub fn set_background_image(&mut self, img: Rc<DynamicImage>) -> &mut Self {
+        self.background_image = Some(img);
+        self
     }
 
     pub fn add_content(&mut self, c: Box<dyn LayoutItem>)  {
         self.content.push(c);
     }
+
+
  }
 
 impl LayoutItem for ContainerBox {
@@ -117,7 +129,7 @@ impl LayoutItem for ContainerBox {
                         let child_height = child.get_layout().height.unwrap_or(0);
                         content_height += child_height;
                         content_width = max(content_width, child.get_layout().width.unwrap_or(0));
-                        remain_height -= child_height;
+                        remain_height = if remain_height > child_height {remain_height - child_height} else {0};
                     } else {
                         sum_height_grow += child.get_layout().height_grow;
                     }
@@ -226,6 +238,8 @@ impl LayoutItem for ContainerBox {
         let h = self.layout.height.unwrap_or(0);
         if let Some(color) = &self.color {
             ret.push(Box::new(Fill::new(x, y, x+w, y+h, &color)));
+        } else if let Some(img) = &self.background_image {
+            ret.push(Box::new(PaintImage::new(x, y, w, h, img.clone())));
         }
         for child in self.content.iter() {
             let mut child_paint_actions = child.get_paint_actions();

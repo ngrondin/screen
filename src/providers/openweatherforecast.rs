@@ -35,31 +35,32 @@ impl OpenWeatherForecast {
 impl Provider for OpenWeatherForecast {
     fn provide(&mut self, data_store: &mut crate::data::DataStore) {
         let url = format!("https://api.openweathermap.org/data/2.5/forecast?lat={}&lon={}&appid={}", self.lat, self.lon, self.api_key);
-        let mut res = reqwest::blocking::get(&url).unwrap();
-        let mut body_str = String::new();
-        res.read_to_string(&mut body_str).unwrap();
-        //println!("{}", &body_str);
-        let in_data: Value = serde_json::from_str(&body_str).unwrap();
-        let in_list = in_data["list"].as_array().unwrap();
-        let mut list: Vec<WeatherForecastItemData> = vec![];
-        for in_item in in_list {
-            let ts = in_item["dt"].as_u64().unwrap_or(0) as i64;
-            let forecast_time = LocalDateTime::at(ts);
-            if forecast_time.time().to_seconds() == 43200 {
-                let icon = in_item["weather"][0]["icon"].as_str().unwrap_or("").to_string();
-                let item = WeatherForecastItemData {
-                    ts,
-                    title: in_item["weather"][0]["main"].as_str().unwrap_or("").to_string(),
-                    icon: format!("https://openweathermap.org/img/wn/{}.png", icon),
-                    temp: in_item["main"]["temp"].as_f64().unwrap_or(273.0),
-                    wind_dir: in_item["wind"]["deg"].as_u64().unwrap_or(0),
-                    wind_speed: in_item["wind"]["speed"].as_f64().unwrap_or(0.0)
-                };
-                list.push(item);                    
+        if let Ok(mut res) = reqwest::blocking::get(&url) {
+            let mut body_str = String::new();
+            res.read_to_string(&mut body_str).unwrap();
+            //println!("{}", &body_str);
+            let in_data: Value = serde_json::from_str(&body_str).unwrap();
+            let in_list = in_data["list"].as_array().unwrap();
+            let mut list: Vec<WeatherForecastItemData> = vec![];
+            for in_item in in_list {
+                let ts = in_item["dt"].as_u64().unwrap_or(0) as i64;
+                let forecast_time = LocalDateTime::at(ts);
+                if forecast_time.time().to_seconds() == 43200 {
+                    let icon = in_item["weather"][0]["icon"].as_str().unwrap_or("").to_string();
+                    let item = WeatherForecastItemData {
+                        ts,
+                        title: in_item["weather"][0]["main"].as_str().unwrap_or("").to_string(),
+                        icon: format!("https://openweathermap.org/img/wn/{}.png", icon),
+                        temp: in_item["main"]["temp"].as_f64().unwrap_or(273.0),
+                        wind_dir: in_item["wind"]["deg"].as_u64().unwrap_or(0),
+                        wind_speed: in_item["wind"]["speed"].as_f64().unwrap_or(0.0)
+                    };
+                    list.push(item);                    
+                }
             }
+            let data = WeatherForecastData { list };
+            let json_str = serde_json::to_string_pretty(&data).unwrap();
+            data_store.store(&self.name, &json_str);     
         }
-        let data = WeatherForecastData { list };
-        let json_str = serde_json::to_string_pretty(&data).unwrap();
-        data_store.store(&self.name, &json_str); 
     }
 }

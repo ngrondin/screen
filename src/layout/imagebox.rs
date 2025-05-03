@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{cmp::min, rc::Rc};
 
 use image::DynamicImage;
 
@@ -10,12 +10,18 @@ use super::{Layout, LayoutItem};
 
 pub struct ImageBox {
     layout: Layout,
-    image: Rc<DynamicImage>
+    image: Rc<DynamicImage>,
+    max_width: Option<u32>,
+    max_height: Option<u32>
 }
 
 impl ImageBox {
     pub fn new(image: Rc<DynamicImage>) -> Self {
-        ImageBox { layout: Layout::default(), image }
+        ImageBox { layout: Layout::default(), image, max_width: None, max_height: None }
+    }
+
+    pub fn new_with_max_size(image: Rc<DynamicImage>, max_width: u32, max_height: u32) -> Self {
+        ImageBox { layout: Layout::default(), image, max_width: Some(max_width), max_height: Some(max_height) }
     }
 }
 
@@ -27,8 +33,10 @@ impl LayoutItem for ImageBox {
     fn run_layout_top_down(&mut self, avail_width: u32, avail_height: u32) {
         let mut width = self.image.width();
         let mut height = self.image.height();
-        if width > avail_width || height > avail_height {
-            let scale = (avail_width as f32 / width as f32).min(avail_height as f32 / height as f32);
+        let max_width = min(avail_width, self.max_width.unwrap_or(10000));
+        let max_height = min(avail_height, self.max_height.unwrap_or(10000));
+        if width > max_width || height > max_height {
+            let scale = (max_width as f32 / width as f32).min(max_height as f32 / height as f32);
             width = (width as f32 * scale) as u32;
             height = (height as f32 * scale) as u32;
         }

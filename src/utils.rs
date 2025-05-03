@@ -1,5 +1,5 @@
 use std::{fs::{self, File}, io::{BufReader, Cursor, Read}};
-
+use std::hash::{DefaultHasher, Hash, Hasher};
 use chrono::Weekday;
 use image::{DynamicImage, ImageReader};
 use serde_json::Value;
@@ -31,32 +31,46 @@ pub fn load_config(folder: &str, name: &str) -> Value {
 }
 
 pub fn get_image(uri: &str) -> Option<DynamicImage> {
-    if uri.starts_with("http://") || uri.starts_with("https://") {
-        let mut res = reqwest::blocking::get(uri).unwrap();
-        let mut image_bytes: Vec<u8> = vec![];
-        let _ = res.read_to_end(&mut image_bytes);
-        let image = ImageReader::new(Cursor::new(image_bytes)).with_guessed_format().unwrap().decode().unwrap();
-        return Some(image);
-    }
-    None
-}
+    let image_bytes = if uri.starts_with("http://") || uri.starts_with("https://") {
+        let uri_hash = calculate_hash(&uri.to_string());
+        let uri_str_hash = format!("{:x}", uri_hash);
+        let cache_path = format!("cache/{}", uri_str_hash);
+        if fs::exists(&cache_path).unwrap() {
+            match fs::read(&cache_path) {
+                Ok(res) => Some(res),
+                Err(_) => None,
+            }
+        } else {
+            match reqwest::blocking::get(uri) {
+                Ok(mut res) => {
+                    let mut bytes: Vec<u8> = vec![];
+                    let _ = res.read_to_end(&mut bytes);
+                    let _ = fs::write(&cache_path, &bytes);
+                    Some(bytes)
+                },
+                Err(_) => None,
+            }
+        }
+    } else if uri.starts_with("file://") {
+        let path = &uri[7..];
+        match fs::read(path) {
+            Ok(res) => Some(res),
+            Err(_) => None,
+        }
+    } else {
+        None
+    };
 
-/*pub fn get_month_name(m: Month) -> String {
-    (match m {
-        Month::January =>"January",
-        Month::February => "February",
-        Month::March => "March",
-        Month::April => "April",
-        Month::May => "May",
-        Month::June => "June",
-        Month::July => "July",
-        Month::August => "August",
-        Month::September => "September",
-        Month::October => "October",
-        Month::November => "November",
-        Month::December => "December",
-    }).to_string()
-}*/
+    match image_bytes {
+        Some(bytes) => {
+            let image = ImageReader::new(Cursor::new(bytes)).with_guessed_format().unwrap().decode().unwrap();
+            Some(image)
+        },
+        None => {
+            None
+        }
+    }
+}
 
 pub fn get_month_name(m: u32) -> String {
     (match m {
@@ -86,4 +100,11 @@ pub fn get_weekday_name(wd: Weekday) -> String {
         Weekday::Fri => "Friday",
         Weekday::Sat => "Saturday",
     }).to_string()
+}
+
+
+fn calculate_hash<T: Hash>(t: &T) -> u64 {
+    let mut s = DefaultHasher::new();
+    t.hash(&mut s);
+    s.finish()
 }

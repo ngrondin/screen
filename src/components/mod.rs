@@ -6,6 +6,7 @@ pub mod factory;
 pub mod container;
 pub mod text;
 pub mod image;
+pub mod randomimage;
 pub mod news;
 pub mod openweather;
 pub mod openweatherforecast;

@@ -1,35 +1,11 @@
 use std::rc::Rc;
 
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::{data::DataStore, fonts::{Font, FontFactory}, framebuffer::Color, layout::{containerbox::{ContainerAlign, ContainerBox, ContainerDir, ContainerJustify}, imagebox::ImageBox, textbox::TextBox}, utils::get_image};
+use crate::{data::DataStore, fonts::{Font, FontFactory}, framebuffer::Color, layout::{containerbox::{ContainerAlign, ContainerBox, ContainerDir, ContainerJustify}, imagebox::ImageBox, textbox::TextBox}, utils::get_image, models::news::RssData};
 
 use super::Component;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-struct RssData {
-    channel: Vec<ChannelData>
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-struct ChannelData {
-    title: String,
-    image: ImageData,
-    item: Vec<ArticleData>
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-struct ImageData {
-    url: String
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-struct ArticleData {
-    title: String,
-    description: String,
-    image: ImageData
-}
 
 pub struct NewsUnit {
     data_name: String,
@@ -61,7 +37,7 @@ impl Component for NewsUnit {
         let mut top = ContainerBox::new(ContainerDir::Column, ContainerAlign::Start, ContainerJustify::Start, 1, 0, None);
         let data: RssData = data_store.load(&self.data_name);
         let mut count = 0;
-        for channel in data.channel {
+        for channel in data.channels {
             let mut title_box = ContainerBox::new(ContainerDir::Row, ContainerAlign::Start, ContainerJustify::Start, 0, 20, None);
             let title_image_option = get_image(&channel.image.url);
             if let Some(title_image) = title_image_option {
@@ -72,11 +48,11 @@ impl Component for NewsUnit {
             
             }
             top.add_content(Box::new(title_box));
-            for item in channel.item {
+            for item in channel.items {
                 let mut item_box = ContainerBox::new(ContainerDir::Row, ContainerAlign::Start, ContainerJustify::Start, 0, 20, None);
                 let image_option = get_image(&item.image.url);
                 if let Some(image) = image_option {
-                    let image_box = ImageBox::new(Rc::new(image));
+                    let image_box = ImageBox::new_with_max_size(Rc::new(image), 300, 300);
                     item_box.add_content(Box::new(image_box));
                 }
                 let mut title_desc_box = ContainerBox::new(ContainerDir::Column, ContainerAlign::Start, ContainerJustify::Start, 0, 20, None);

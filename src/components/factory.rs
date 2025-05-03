@@ -4,7 +4,7 @@ use serde_json::Value;
 
 use crate::{components::{container::ContainerUnit, image::ImageUnit, text::TextUnit, Component}, fonts::FontFactory, utils::{list_folder_configs, load_config}};
 
-use super::{datetime::DateTimeUnit, news::NewsUnit, openweather::WeatherUnit, openweatherforecast::WeatherForecastUnit, Page};
+use super::{datetime::DateTimeUnit, news::NewsUnit, openweather::WeatherUnit, openweatherforecast::WeatherForecastUnit, randomimage::RandomImageUnit, Page};
 
 
 pub struct PageFactory {
@@ -46,6 +46,7 @@ impl PageFactory {
                     },
                     "text" => Box::new(TextUnit::new(&value, self.font_factory.clone())),
                     "image" => Box::new(ImageUnit::new(&value)),
+                    "randomimage" => Box::new(RandomImageUnit::new(&value)),
                     "news" => Box::new(NewsUnit::new(&value, self.font_factory.clone())),
                     "weather" => Box::new(WeatherUnit::new(&value, self.font_factory.clone())),
                     "weatherforecast" => Box::new(WeatherForecastUnit::new(&value, self.font_factory.clone())),

@@ -1,6 +1,8 @@
+use std::rc::Rc;
+
 use serde_json::Value;
 
-use crate::{data::DataStore, framebuffer::Color, layout::{containerbox::{ContainerAlign, ContainerBox, ContainerDir, ContainerJustify}, LayoutItem}};
+use crate::{data::DataStore, framebuffer::Color, layout::{containerbox::{ContainerAlign, ContainerBox, ContainerDir, ContainerJustify}, LayoutItem}, utils::get_image};
 
 use super::Component;
 
@@ -12,6 +14,7 @@ pub struct ContainerUnit {
     grow: u8,
     pad: u32,
     color: Option<Color>,
+    background_image_uri: Option<String>,
     children: Vec<Box<dyn Component>>
 }
 
@@ -55,7 +58,11 @@ impl ContainerUnit {
             Some(color_str) => Some(Color::from_string(color_str)),
             None => None
         };
-        ContainerUnit{ dir, align, justify, grow, pad, color, children: vec![] }
+        let background_image_uri = match value["background_image_uri"].as_str() {
+            Some(path) => Some(path.to_string()),
+            None => None
+        };
+        ContainerUnit{ dir, align, justify, grow, pad, color, background_image_uri, children: vec![] }
     }
 
     pub fn add_child(&mut self, child: Box<dyn Component>) {
@@ -66,6 +73,12 @@ impl ContainerUnit {
 impl Component for ContainerUnit {
     fn produce(&self, data_store: &DataStore) -> Box<dyn LayoutItem> {
         let mut container_box = ContainerBox::new(self.dir.clone(), self.align.clone(), self.justify.clone(), self.grow, self.pad, self.color.clone());
+        if let Some(uri) = &self.background_image_uri {
+            let img_opt = get_image(&uri);
+            if let Some(img) = img_opt {
+                container_box.set_background_image(Rc::new(img));
+            }
+        }
         for child in self.children.iter() {
             let childbox = child.produce(data_store);
             container_box.add_content(childbox);
